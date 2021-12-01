@@ -92,10 +92,23 @@ class gross_income(Variable):
         return add(person, period, COMPONENTS)
 
 
+class household_gross_income(Variable):
+    value_type = float
+    entity = Household
+    unit = "currency-GBP"
+    label = u"Household gross income"
+    definition_period = YEAR
+
+    def formula(household, period, parameters):
+        return household.sum(household.members("gross_income", period))
+
+
 class net_income(Variable):
     value_type = float
     entity = Person
     label = u"Net income"
+    documentation = "Market income, minus taxes, plus benefits"
+    unit = "currency-GBP"
     definition_period = YEAR
 
     def formula(person, period, parameters):
@@ -132,12 +145,7 @@ class weekly_hours(Variable):
     label = u"Weekly hours"
     documentation = "Average weekly hours worked"
     definition_period = YEAR
-    metadata = dict(
-        policyengine=dict(
-            max=60,
-            type="amount",
-        )
-    )
+    unit = "hour"
 
     def formula(person, period, parameters):
         return person("hours_worked", period) / WEEKS_IN_YEAR
@@ -190,14 +198,14 @@ class household_net_income(Variable):
     value_type = float
     entity = Household
     label = u"Household net income"
+    documentation = "Disposable income for the household"
+    unit = "currency-GBP"
     definition_period = YEAR
 
     def formula(household, period, parameters):
-        return max_(
-            0,
-            aggr(household, period, ["net_income"])
-            - household("council_tax", period),
-        )
+        gross_income = household("household_gross_income", period)
+        tax = household("household_tax", period)
+        return gross_income - tax
 
 
 class household_net_income_ahc(Variable):
@@ -300,3 +308,15 @@ class minimum_wage(Variable):
     def formula(person, period, parameters):
         MW = parameters(period).law.minimum_wage
         return MW[person("minimum_wage_category", period)]
+
+
+class household_market_income(Variable):
+    value_type = float
+    entity = Household
+    label = u"Household market income"
+    documentation = "Market income for the household"
+    definition_period = YEAR
+    unit = "currency-GBP"
+
+    def formula(household, period, parameters):
+        return household.sum(household.members("market_income", period))
